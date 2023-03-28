@@ -29,14 +29,16 @@ object MyFlinkApp {
 //                .setParallelism(1)
         var outputBasePath = Path("./data/");
         val config = OutputFileConfig
-                .builder()
-                .withPartPrefix("sdjalksdaslkdj")
-                .withPartSuffix(".parquet")
-                .build()
+            .builder()
+            .withPartSuffix(".parquet")
+            .build()
         var sink = FileSink.forBulkFormat(outputBasePath, ParquetProtoWriters.forType(BlockTraceOuterClass.BlockTrace::class.java))
-                .withRollingPolicy( OnCheckpointRollingPolicy.build() )
-                .withOutputFileConfig(config)
-                .build()
+            .withRollingPolicy( OnCheckpointRollingPolicy.build() )
+            .withBucketAssigner(
+                CustomBucketAssigner()
+            )
+            .withOutputFileConfig(config)
+            .build()
         sourceStream.sinkTo(sink)
 
         env.execute("My Flink App")

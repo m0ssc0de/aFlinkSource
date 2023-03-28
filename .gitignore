@@ -1,0 +1,5 @@
+.gradle
+.ideal
+data/
+build
+bin
