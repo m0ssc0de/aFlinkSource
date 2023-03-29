@@ -43,8 +43,8 @@ class IntRangeReader(private val context: SourceReaderContext) : SourceReader<Bl
 //                t.blockHeight = i
                 try {
 //                    t.blockHeight = i
-                    output.collect(t)
-//                    output.collect(BlockTraceOuterClass.BlockTrace.newBuilder(t).setBlockHeight(i).build())
+//                    output.collect(t)
+                    output.collect(BlockTraceOuterClass.BlockTrace.newBuilder(t).setBlockHeight(i).build())
                 } catch (e: Exception) {
                     println("Collect Exception caught: ${e.javaClass.simpleName}: ${e.message}")
                     e.printStackTrace()

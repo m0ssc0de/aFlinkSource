@@ -1,5 +1,5 @@
 .gradle
-.ideal
+.idea
 data/
 build
 bin
