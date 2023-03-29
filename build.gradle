@@ -91,9 +91,6 @@ dependencies {
     }
     implementation 'com.google.protobuf:protobuf-java:3.7.0'
 
-
-
-
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlinVersion}"
 
     implementation 'com.google.protobuf:protobuf-java:3.8.0'
@@ -146,6 +143,7 @@ sourceSets {
 }
 run.classpath = sourceSets.main.runtimeClasspath
 
+ext.googleCloudAuthJsonKeyfile = ""
 
 publishing {
     publications {
