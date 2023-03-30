@@ -13,6 +13,8 @@ class IntEnumerator : SplitEnumerator<IntRangeSplit, EnumeratorState> {
     private var updated_until: Long? = null
     private var assigned_until: Long? = null
 
+    private val max_batch_size: Long = 1// TODO: 1. init from constructor 2. concurrent processing in reader
+
     private var nodeClient: NodeClient
 
     private var state: EnumeratorState? = null
@@ -50,35 +52,34 @@ class IntEnumerator : SplitEnumerator<IntRangeSplit, EnumeratorState> {
             println("assignSplit $split")
             context!!.assignSplit(split, subtaskId)
         } else {
-//            if (state == null) {
-//                println("state == null")
-//                context!!.assignSplit(IntRangeSplit(updated_from!!, updated_until!!, false), subtaskId)
-//                state = EnumeratorState(updated_until!!, listOf())
-//            } else {
-//                while (state!!.currentUntil == updated_until) {
-//                    updateBlockHeight()
-//                }
-//                context!!.assignSplit(IntRangeSplit(updated_from!!, updated_until!!, false), subtaskId)
-//                state!!.currentUntil = updated_until!!
-//            }
             when(assigned_until) {
                 null -> {
-//                    println("assigned updated_from:$updated_from updated_until:$updated_until")
-//                    context!!.assignSplit(IntRangeSplit(updated_from!!, updated_until!!, false), subtaskId)
-                    assigned_until = updated_until
-                    if (state == null) {
-                        state = EnumeratorState(updated_until!!, listOf())
+                    val from = updated_from
+                    val until = if (from?.plus(this.max_batch_size-1)!! <= updated_until!!) {
+                        from?.plus(this.max_batch_size-1)
+                    } else {
+                        updated_until
                     }
-                    state!!.currentUntil = updated_until!!
+                    context!!.assignSplit(IntRangeSplit(from!!, until!!, false), subtaskId)
+                    assigned_until = until
+                    if (state == null) {
+                        state = EnumeratorState(assigned_until!!, listOf())
+                    }
+                    state!!.currentUntil = assigned_until!!
                 }
                 else -> {
                     while (assigned_until == updated_until) {
                         updateBlockHeight()
                     }
-                    println("assigned assigned_until+1:${assigned_until!!+1} updated_until:$updated_until to $subtaskId")
-                    context!!.assignSplit(IntRangeSplit(assigned_until!!+1, updated_until!!, false), subtaskId)
-                    assigned_until = updated_until
-                    state!!.currentUntil = updated_until!!
+                    val from = assigned_until!!+1
+                    val until = if (from?.plus(this.max_batch_size-1)!! <= updated_until!!) {
+                        from?.plus(this.max_batch_size-1)
+                    } else {
+                        updated_until
+                    }
+                    context!!.assignSplit(IntRangeSplit(from, until!!, false), subtaskId)
+                    assigned_until = until
+                    state!!.currentUntil = assigned_until!!
                 }
             }
         }

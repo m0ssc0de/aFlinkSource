@@ -18,7 +18,7 @@ object MyFlinkApp {
     fun main(args: Array<String>) {
 
         val env = StreamExecutionEnvironment.getExecutionEnvironment()
-//        env.enableCheckpointing(10)
+        env.enableCheckpointing(1000)
         env.config.registerTypeWithKryoSerializer(BlockTraceOuterClass.BlockTrace::class.java, ProtobufSerializer::class.java)
 
 
@@ -28,7 +28,7 @@ object MyFlinkApp {
         var sourceStream = env.fromSource(IntSource(),
                 WatermarkStrategy.noWatermarks(),
                 "aSource")
-                .setParallelism(1)
+                .setParallelism(4)
         val outputBasePath = Path("./data/")
         val config = OutputFileConfig
             .builder()
