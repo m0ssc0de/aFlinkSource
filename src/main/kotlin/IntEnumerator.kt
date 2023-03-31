@@ -13,25 +13,38 @@ class IntEnumerator : SplitEnumerator<IntRangeSplit, EnumeratorState> {
     private var updated_until: Long? = null
     private var assigned_until: Long? = null
 
-    private val max_batch_size: Long = 1// TODO: 1. init from constructor 2. concurrent processing in reader
+    private var max_batch_size: Long = 10// TODO: -1. init from constructor 2. concurrent processing in reader
 
     private var nodeClient: NodeClient
+    private var url: URL
 
     private var state: EnumeratorState? = null
     private var context:SplitEnumeratorContext<IntRangeSplit>?  = null
 
-    constructor(context: SplitEnumeratorContext<IntRangeSplit>, state: EnumeratorState)  {
+    constructor(context: SplitEnumeratorContext<IntRangeSplit>, state: EnumeratorState, url: URL = URL(""))  {
         this.context = context
         this.state = state
-        val url = URL("https://node-7038644315796209664.sk.onfinality.io/rpc?apikey=1461e43a-4f35-4dc3-95a7-938c274a528a")
+        this.url = url
         this.nodeClient = NodeClient(url)
     }
-    constructor(context: SplitEnumeratorContext<IntRangeSplit>): this(context, EnumeratorState(0))
+
+    constructor(context: SplitEnumeratorContext<IntRangeSplit>, url: URL, from: Long): this(context, EnumeratorState((0)), url)  {
+        this.updated_from = from
+    }
+    constructor(context: SplitEnumeratorContext<IntRangeSplit>) :this(context, EnumeratorState(0))
+    constructor(context: SplitEnumeratorContext<IntRangeSplit>, url: URL, from:Long, max_batch_size: Long) :this(context, url, from) {
+        this.max_batch_size = max_batch_size
+    }
+
+    constructor(context: SplitEnumeratorContext<IntRangeSplit>, url: URL):this(context, EnumeratorState(0), url)
+
 
     override fun start() {
-        if ((updated_from == null) || (updated_until == null )) {
-            updated_from = nodeClient.getBlockHeight(nodeClient.getFinalized())
-            updated_until = updated_from
+        if (updated_until == null) {
+            updated_until = nodeClient.getBlockHeight(nodeClient.getFinalized())
+        }
+        if (updated_from == null) {
+            updated_from = updated_until
         }
     }
 
@@ -60,7 +73,7 @@ class IntEnumerator : SplitEnumerator<IntRangeSplit, EnumeratorState> {
                     } else {
                         updated_until
                     }
-                    context!!.assignSplit(IntRangeSplit(from!!, until!!, false), subtaskId)
+                    context!!.assignSplit(IntRangeSplit(from!!, until!!, url.toString(), false), subtaskId)
                     assigned_until = until
                     if (state == null) {
                         state = EnumeratorState(assigned_until!!, listOf())
@@ -77,7 +90,7 @@ class IntEnumerator : SplitEnumerator<IntRangeSplit, EnumeratorState> {
                     } else {
                         updated_until
                     }
-                    context!!.assignSplit(IntRangeSplit(from, until!!, false), subtaskId)
+                    context!!.assignSplit(IntRangeSplit(from, until!!,url.toString(), false), subtaskId)
                     assigned_until = until
                     state!!.currentUntil = assigned_until!!
                 }

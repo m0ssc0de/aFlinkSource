@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
 
 class NodeClient {
 //    val url: URL? = null
-    private var url: URL? = URL("https://node-7038644315796209664.sk.onfinality.io/rpc?apikey=1461e43a-4f35-4dc3-95a7-938c274a528a")
+    private var url: URL? = null
     var c: Int = 0
 
     @Serializable
@@ -34,7 +34,13 @@ class NodeClient {
         this.url = url
     }
 
-    public fun getFinalized(): String {
+    constructor(){}
+
+    public fun updateURL(url: URL) {
+        this.url = url
+    }
+
+    public fun getFinalized(url: URL = this.url!!): String {
         val json = "{\n" +
                 "    \"id\": 1,\n" +
                 "    \"jsonrpc\": \"2.0\",\n" +
@@ -42,10 +48,10 @@ class NodeClient {
                 "    \"params\": [\n" +
                 "    ]\n" +
                 "}"
-        return postJsonRPC(json, RPCFinalizedResponse::class.java).result
+        return postJsonRPC(json, RPCFinalizedResponse::class.java, url).result
     }
 
-    public fun getBlockHeight(hash: String): Long {
+    public fun getBlockHeight(hash: String, url: URL = this.url!!): Long {
         val json = "{\n" +
                 "    \"id\": 1,\n" +
                 "    \"jsonrpc\": \"2.0\",\n" +
@@ -54,11 +60,11 @@ class NodeClient {
                 "        \"${hash}\"\n" +
                 "    ]\n" +
                 "}"
-        val blockHash = postJsonRPC(json, RPCHeaderResponse::class.java).result.number
+        val blockHash = postJsonRPC(json, RPCHeaderResponse::class.java, url).result.number
         return Integer.decode(blockHash).toLong()//TODO
     }
 
-    public fun getBlockHash(height: Long): String {
+    public fun getBlockHash(height: Long, url: URL = this.url!!): String {
         val json = "{\n" +
                 "    \"id\": 1,\n" +
                 "    \"jsonrpc\": \"2.0\",\n" +
@@ -67,10 +73,10 @@ class NodeClient {
                 "        ${height}\n" +
                 "    ]\n" +
                 "}"
-        return postJsonRPC(json, RPCFinalizedResponse::class.java).result
+        return postJsonRPC(json, RPCFinalizedResponse::class.java, url).result
     }
 
-    public fun getTracing(hash: String): BlockTraceOuterClass.BlockTrace{
+    public fun getTracing(hash: String, url: URL = this.url!!): BlockTraceOuterClass.BlockTrace{
         val json = "{\n" +
                 "    \"id\": 1,\n" +
                 "    \"jsonrpc\": \"2.0\",\n" +
@@ -83,7 +89,7 @@ class NodeClient {
                 "    ]\n" +
                 "}"
 //        "        \"pallet,frame,state\",\n" +
-        val response = execPostJsonRPC(json)
+        val response = execPostJsonRPC(json, url)
         val traceBuilder = BlockTraceOuterClass.BlockTraceRPCResponse.newBuilder()
         JsonFormat.parser().ignoringUnknownFields().merge(response.body?.charStream(), traceBuilder)
         return traceBuilder.build().result.blockTrace
@@ -99,10 +105,10 @@ class NodeClient {
 //        return bt
     }
 
-    private fun <T> postJsonRPC(json: String,  classOfT: Class<T>): T {
+    private fun <T> postJsonRPC(json: String,  classOfT: Class<T>, url: URL): T {
         val gson = Gson()
 
-        val response = execPostJsonRPC(json)
+        val response = execPostJsonRPC(json, url)
 
         val r =  gson.fromJson(response.body?.charStream(), classOfT)
         response.close()
@@ -110,7 +116,7 @@ class NodeClient {
         return r
     }
 
-    private fun execPostJsonRPC(json: String): Response {
+    private fun execPostJsonRPC(json: String, url: URL): Response {
         val client = OkHttpClient()
 
         val eagerClient = client.newBuilder()
@@ -123,7 +129,7 @@ class NodeClient {
         val requestBody = json.toRequestBody("application/json".toMediaTypeOrNull())
 
         val request = Request.Builder()
-                .url(this.url!!)
+                .url(url)
                 .addHeader("Content-Type", "application/json")
                 .post(requestBody)
                 .build()

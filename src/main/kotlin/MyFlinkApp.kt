@@ -9,6 +9,7 @@ import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.
 import org.example.custom.source.IntSource
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.net.URL
 
 
 object MyFlinkApp {
@@ -25,7 +26,12 @@ object MyFlinkApp {
 //        gs://<your-bucket>/<endpoint>
 
 
-        var sourceStream = env.fromSource(IntSource(),
+        var sourceStream = env.fromSource(
+                IntSource(
+                        URL("https://node-7038644315796209664.sk.onfinality.io/rpc?apikey=1461e43a-4f35-4dc3-95a7-938c274a528a"),
+                        0,
+                        100
+                ),
                 WatermarkStrategy.noWatermarks(),
                 "aSource")
                 .setParallelism(4)
@@ -35,7 +41,7 @@ object MyFlinkApp {
             .withPartSuffix(".parquet")
             .build()
         var sink = FileSink.forBulkFormat(outputBasePath, ParquetProtoWriters.forType(BlockTraceOuterClass.BlockTrace::class.java))
-//            .withRollingPolicy( OnCheckpointRollingPolicy.build() )
+            .withRollingPolicy( OnCheckpointRollingPolicy.build() )
             .withBucketAssigner(
                 CustomBucketAssigner()
             )

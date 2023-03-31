@@ -2,6 +2,10 @@ package org.example.custom.source
 
 import BlockTrace
 import NodeClient
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import org.apache.flink.api.connector.source.ReaderOutput
 import org.apache.flink.api.connector.source.SourceReader
 import org.apache.flink.api.connector.source.SourceReaderContext
@@ -10,6 +14,8 @@ import java.net.URL
 
 import java.util.List
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentLinkedQueue
+import kotlin.system.measureTimeMillis
 
 class IntRangeReader(private val context: SourceReaderContext) : SourceReader<BlockTraceOuterClass.BlockTrace, IntRangeSplit> {
     private var currentSplit: IntRangeSplit? = null
@@ -19,65 +25,62 @@ class IntRangeReader(private val context: SourceReaderContext) : SourceReader<Bl
 
 
     override fun start() {
-        //TODO url come with split
-        val url = URL("https://node-7038644315796209664.sk.onfinality.io/rpc?apikey=1461e43a-4f35-4dc3-95a7-938c274a528a")
-        this.nodeClient = NodeClient(url)
+        this.nodeClient = NodeClient()
     }
 
     override fun pollNext(output: ReaderOutput<BlockTraceOuterClass.BlockTrace>): InputStatus {
 
         if (currentSplit != null && !currentSplit!!.done) {
-            println("FROM ${currentSplit!!.from} UNTIL ${currentSplit!!.until}")
-            for (i in currentSplit!!.from..currentSplit!!.until) {
-                println("fetching $i")
-                var t : BlockTraceOuterClass.BlockTrace = BlockTraceOuterClass.BlockTrace.newBuilder().build()
-                try {
-                    t = nodeClient!!.getTracing(nodeClient!!.getBlockHash(i))
-                } catch (e: Exception) {
-                    println("Exception caught: ${e.javaClass.simpleName}: ${e.message}")
-                    e.printStackTrace()
-                    throw e
-                } finally {
-                    println("HASH ${t.blockHash}")
+            nodeClient?.updateURL(URL(currentSplit!!.url))
+            println("Reader execu FROM ${currentSplit!!.from} UNTIL ${currentSplit!!.until}")
+            var responsTimeHistory = ConcurrentLinkedQueue<Long>()
+            var maxConcurrency = 100 // initial value for maxConcurrency
+            val semaphore = Semaphore(maxConcurrency)
+            val mutex = Mutex()
+            val job = GlobalScope.launch {
+                coroutineScope {
+                    (currentSplit!!.from.. currentSplit!!.until).toList().map {blockHeight ->
+                        launch {
+                            semaphore.acquire()
+                            var traceBlock = BlockTraceOuterClass.BlockTrace.newBuilder().build()
+                            try{
+                                val responseTime = measureTimeMillis {
+                                    var t = nodeClient!!.getTracing(nodeClient!!.getBlockHash(blockHeight))
+                                    traceBlock = BlockTraceOuterClass.BlockTrace.newBuilder(t).setBlockHeight(blockHeight).build()
+                                }
+                                responsTimeHistory.add(responseTime)// TODO: dynamic maxConcurrency base on the this value
+                            } catch (e: Exception) {
+                                println("Fetching Exception caught: ${e.javaClass.simpleName}: ${e.message}")
+                                e.printStackTrace()
+                                throw e
+                            } finally {
+                            }
+
+                            try {
+                                mutex.withLock {
+                                    output.collect(traceBlock)
+                                }
+                            } catch (e: Exception) {
+                                println("Collecting Exception caught: ${e.javaClass.simpleName}: ${e.message}")
+                                e.printStackTrace()
+                                throw e
+                            } finally {
+                            }
+                        }
+                    }.joinAll()
                 }
-//                t.blockHeight = i
-                try {
-//                    t.blockHeight = i
-//                    output.collect(t)
-                    output.collect(BlockTraceOuterClass.BlockTrace.newBuilder(t).setBlockHeight(i).build())
-                } catch (e: Exception) {
-                    println("Collect Exception caught: ${e.javaClass.simpleName}: ${e.message}")
-                    e.printStackTrace()
-                    throw e
-                } finally {
-                    println("HASH ${t.blockHash}")
+            }
+            runBlocking {
+                job.join() // Wait for the job to finish
+                println("3 after joinAll")
+                currentSplit!!.done = true
+                if (availability.isDone) {
+                    availability = CompletableFuture()
+                    context.sendSplitRequest()
                 }
-//                output.collect(t)
-//                println("COLLECT $i ${t.eventsCount}")
-                println("COLLECT $i")
+                return@runBlocking InputStatus.NOTHING_AVAILABLE
             }
-            currentSplit!!.done = true
-            if (availability.isDone) {
-                availability = CompletableFuture()
-                context.sendSplitRequest()
-            }
-            return InputStatus.NOTHING_AVAILABLE
-//            return InputStatus.END_OF_INPUT
         }
-//        if (currentSplit != null && !currentSplit!!.done) {
-//            for (i in currentSplit!!.from..currentSplit!!.until) {
-//                val t = nodeClient!!.getTracing(nodeClient!!.getBlockHash(i))
-//                output.collect(t)
-//                currentSplit!!.done = true
-//            }
-//            return InputStatus.NOTHING_AVAILABLE
-//        } else {
-//            if (availability.isDone) {
-//                availability = CompletableFuture()
-//                context.sendSplitRequest()
-//            }
-//            return InputStatus.END_OF_INPUT
-//        }
         if (availability.isDone) {
             availability = CompletableFuture()
             context.sendSplitRequest()
