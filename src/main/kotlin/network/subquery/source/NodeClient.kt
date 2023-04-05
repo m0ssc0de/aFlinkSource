@@ -1,3 +1,7 @@
+package network.subquery.source
+
+import BlockTrace
+import BlockTraceOuterClass
 import com.google.gson.Gson
 import com.google.protobuf.util.JsonFormat
 import kotlinx.serialization.Serializable
@@ -8,7 +12,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
 import java.net.URL
-import java.util.concurrent.TimeUnit
 
 
 class NodeClient {
@@ -76,7 +79,7 @@ class NodeClient {
         return postJsonRPC(json, RPCFinalizedResponse::class.java, url).result
     }
 
-    public fun getTracing(hash: String, url: URL = this.url!!): BlockTraceOuterClass.BlockTrace{
+    public fun getTracing(hash: String, url: URL = this.url!!): BlockTraceOuterClass.BlockTrace {
         val json = "{\n" +
                 "    \"id\": 1,\n" +
                 "    \"jsonrpc\": \"2.0\",\n" +

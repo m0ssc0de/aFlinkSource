@@ -71,6 +71,10 @@ configurations {
     optionalDependencies
 }
 
+shadowJar {
+    zip64 true
+}
+
 dependencies {
     implementation "org.apache.flink:flink-streaming-java:${flinkVersion}"
     implementation "org.apache.flink:flink-clients:${flinkVersion}"

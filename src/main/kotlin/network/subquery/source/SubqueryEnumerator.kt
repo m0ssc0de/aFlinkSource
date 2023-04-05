@@ -1,14 +1,10 @@
-package org.example.custom.source
+package network.subquery.source
 
-import NodeClient
-import kotlinx.coroutines.runInterruptible
 import org.apache.flink.api.connector.source.SplitEnumerator
 import org.apache.flink.api.connector.source.SplitEnumeratorContext
-import org.w3c.dom.Node
 import java.net.URL
-import kotlin.concurrent.thread
 
-class IntEnumerator : SplitEnumerator<IntRangeSplit, EnumeratorState> {
+class SubqueryEnumerator : SplitEnumerator<SubquerySplit, EnumeratorState> {
     private var updated_from: Long? = null
     private var updated_until: Long? = null
     private var assigned_until: Long? = null
@@ -19,24 +15,24 @@ class IntEnumerator : SplitEnumerator<IntRangeSplit, EnumeratorState> {
     private var url: URL
 
     private var state: EnumeratorState? = null
-    private var context:SplitEnumeratorContext<IntRangeSplit>?  = null
+    private var context:SplitEnumeratorContext<SubquerySplit>?  = null
 
-    constructor(context: SplitEnumeratorContext<IntRangeSplit>, state: EnumeratorState, url: URL = URL(""))  {
+    constructor(context: SplitEnumeratorContext<SubquerySplit>, state: EnumeratorState, url: URL = URL(""))  {
         this.context = context
         this.state = state
         this.url = url
         this.nodeClient = NodeClient(url)
     }
 
-    constructor(context: SplitEnumeratorContext<IntRangeSplit>, url: URL, from: Long): this(context, EnumeratorState((0)), url)  {
+    constructor(context: SplitEnumeratorContext<SubquerySplit>, url: URL, from: Long): this(context, EnumeratorState((0)), url)  {
         this.updated_from = from
     }
-    constructor(context: SplitEnumeratorContext<IntRangeSplit>) :this(context, EnumeratorState(0))
-    constructor(context: SplitEnumeratorContext<IntRangeSplit>, url: URL, from:Long, max_batch_size: Long) :this(context, url, from) {
+    constructor(context: SplitEnumeratorContext<SubquerySplit>) :this(context, EnumeratorState(0))
+    constructor(context: SplitEnumeratorContext<SubquerySplit>, url: URL, from:Long, max_batch_size: Long) :this(context, url, from) {
         this.max_batch_size = max_batch_size
     }
 
-    constructor(context: SplitEnumeratorContext<IntRangeSplit>, url: URL):this(context, EnumeratorState(0), url)
+    constructor(context: SplitEnumeratorContext<SubquerySplit>, url: URL):this(context, EnumeratorState(0), url)
 
 
     override fun start() {
@@ -69,11 +65,11 @@ class IntEnumerator : SplitEnumerator<IntRangeSplit, EnumeratorState> {
                 null -> {
                     val from = updated_from
                     val until = if (from?.plus(this.max_batch_size-1)!! <= updated_until!!) {
-                        from?.plus(this.max_batch_size-1)
+                        from.plus(this.max_batch_size-1)
                     } else {
                         updated_until
                     }
-                    context!!.assignSplit(IntRangeSplit(from!!, until!!, url.toString(), false), subtaskId)
+                    context!!.assignSplit(SubquerySplit(from!!, until!!, url.toString(), false), subtaskId)
                     assigned_until = until
                     if (state == null) {
                         state = EnumeratorState(assigned_until!!, listOf())
@@ -90,7 +86,7 @@ class IntEnumerator : SplitEnumerator<IntRangeSplit, EnumeratorState> {
                     } else {
                         updated_until
                     }
-                    context!!.assignSplit(IntRangeSplit(from, until!!,url.toString(), false), subtaskId)
+                    context!!.assignSplit(SubquerySplit(from, until!!,url.toString(), false), subtaskId)
                     assigned_until = until
                     state!!.currentUntil = assigned_until!!
                 }
@@ -98,7 +94,7 @@ class IntEnumerator : SplitEnumerator<IntRangeSplit, EnumeratorState> {
         }
     }
 
-    override fun addSplitsBack(splits: MutableList<IntRangeSplit>?, subtaskId: Int) {
+    override fun addSplitsBack(splits: MutableList<SubquerySplit>?, subtaskId: Int) {
         println("BACK from $subtaskId")
         if (splits?.isNotEmpty() == true) {
             println("SIZE ${splits.size}")

@@ -1,7 +1,5 @@
-package org.example.custom.source
+package network.subquery.source
 
-import BlockTrace
-import NodeClient
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
@@ -12,13 +10,12 @@ import org.apache.flink.api.connector.source.SourceReaderContext
 import org.apache.flink.core.io.InputStatus
 import java.net.URL
 
-import java.util.List
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.system.measureTimeMillis
 
-class IntRangeReader(private val context: SourceReaderContext) : SourceReader<BlockTraceOuterClass.BlockTrace, IntRangeSplit> {
-    private var currentSplit: IntRangeSplit? = null
+class SubqueryReader(private val context: SourceReaderContext) : SourceReader<BlockTraceOuterClass.BlockTrace, SubquerySplit> {
+    private var currentSplit: SubquerySplit? = null
     private var availability: CompletableFuture<Void> = CompletableFuture.completedFuture(null)
 
     private var nodeClient: NodeClient? = null
@@ -88,7 +85,7 @@ class IntRangeReader(private val context: SourceReaderContext) : SourceReader<Bl
         return InputStatus.NOTHING_AVAILABLE
     }
 
-    override fun snapshotState(checkpointId: Long): MutableList<IntRangeSplit>? {
+    override fun snapshotState(checkpointId: Long): MutableList<SubquerySplit>? {
         return listOf(currentSplit!!).toMutableList()
     }
 
@@ -96,7 +93,7 @@ class IntRangeReader(private val context: SourceReaderContext) : SourceReader<Bl
         return availability
     }
 
-    override fun addSplits(splits: MutableList<IntRangeSplit>?) {
+    override fun addSplits(splits: MutableList<SubquerySplit>?) {
         // One split is assigned per task in enumerator therefore we only use the first index.
         currentSplit = splits?.get(0)
         // Data availability is over since we got a split.

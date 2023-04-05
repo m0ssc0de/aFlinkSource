@@ -1,11 +1,10 @@
-package org.example.custom.source
+package network.subquery.source
 
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.flink.core.io.SimpleVersionedSerializer
 import java.io.ByteArrayInputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
-import javax.management.RuntimeErrorException
 
 class SimpleSerializer<T> : SimpleVersionedSerializer<T> {
     override fun getVersion(): Int {

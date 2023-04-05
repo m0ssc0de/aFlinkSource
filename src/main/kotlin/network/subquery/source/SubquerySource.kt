@@ -1,6 +1,5 @@
-package org.example.custom.source
+package network.subquery.source
 
-import BlockTrace
 import org.apache.flink.api.connector.source.Boundedness
 import org.apache.flink.api.connector.source.Source
 import org.apache.flink.api.connector.source.SourceReader
@@ -10,7 +9,7 @@ import org.apache.flink.api.connector.source.SplitEnumeratorContext
 import org.apache.flink.core.io.SimpleVersionedSerializer
 import java.net.URL
 
-class IntSource : Source<BlockTraceOuterClass.BlockTrace, IntRangeSplit, EnumeratorState> {
+class SubquerySource : Source<BlockTraceOuterClass.BlockTrace, SubquerySplit, EnumeratorState> {
     private lateinit var url:URL
     private var urls = mutableListOf<URL>()
     private var from: Long? = null
@@ -37,23 +36,23 @@ class IntSource : Source<BlockTraceOuterClass.BlockTrace, IntRangeSplit, Enumera
     override fun getBoundedness(): Boundedness = Boundedness.CONTINUOUS_UNBOUNDED
 
 //    override fun createReader(readerContext: SourceReaderContext): SourceReader<BlockTraceOuterClass.BlockTrace, IntRangeSplit> = IntRangeReader(readerContext)
-    override fun createReader(readerContext: SourceReaderContext): SourceReader<BlockTraceOuterClass.BlockTrace, IntRangeSplit> = IntRangeReader(readerContext)
+    override fun createReader(readerContext: SourceReaderContext): SourceReader<BlockTraceOuterClass.BlockTrace, SubquerySplit> = SubqueryReader(readerContext)
 
-    override fun createEnumerator(enumContext: SplitEnumeratorContext<IntRangeSplit>): SplitEnumerator<IntRangeSplit, EnumeratorState> {
+    override fun createEnumerator(enumContext: SplitEnumeratorContext<SubquerySplit>): SplitEnumerator<SubquerySplit, EnumeratorState> {
         println("createEnumerator")
         if (this.from != null && this.maxBatchSize != null) {
             println("createEnumerator from non-null")
-            return IntEnumerator(enumContext, url, this.from!!, this.maxBatchSize!!)
+            return SubqueryEnumerator(enumContext, url, this.from!!, this.maxBatchSize!!)
         } else {
             println("createEnumerator from null ${this.from}, ${this.maxBatchSize}")
-            return IntEnumerator(enumContext, url)
+            return SubqueryEnumerator(enumContext, url)
         }
     }
 
     // Enumerator is initialized with previous enumerator state.
-    override fun restoreEnumerator(enumContext: SplitEnumeratorContext<IntRangeSplit>, checkpoint: EnumeratorState): SplitEnumerator<IntRangeSplit, EnumeratorState> = IntEnumerator(enumContext, checkpoint)
+    override fun restoreEnumerator(enumContext: SplitEnumeratorContext<SubquerySplit>, checkpoint: EnumeratorState): SplitEnumerator<SubquerySplit, EnumeratorState> = SubqueryEnumerator(enumContext, checkpoint)
 
-    override fun getSplitSerializer(): SimpleVersionedSerializer<IntRangeSplit> = SimpleSerializer()
+    override fun getSplitSerializer(): SimpleVersionedSerializer<SubquerySplit> = SimpleSerializer()
 
     override fun getEnumeratorCheckpointSerializer(): SimpleVersionedSerializer<EnumeratorState> = SimpleSerializer()
 }

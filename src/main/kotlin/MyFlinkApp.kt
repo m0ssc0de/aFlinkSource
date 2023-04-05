@@ -6,7 +6,7 @@ import org.apache.flink.formats.parquet.protobuf.ParquetProtoWriters
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.functions.sink.filesystem.OutputFileConfig
 import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.OnCheckpointRollingPolicy
-import org.example.custom.source.IntSource
+import network.subquery.source.SubquerySource
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.URL
@@ -27,15 +27,16 @@ object MyFlinkApp {
 
 
         var sourceStream = env.fromSource(
-                IntSource(
+                SubquerySource(
                         URL("https://node-7038644315796209664.sk.onfinality.io/rpc?apikey=1461e43a-4f35-4dc3-95a7-938c274a528a"),
                         0,
-                        100
+                        10,
                 ),
                 WatermarkStrategy.noWatermarks(),
                 "aSource")
-                .setParallelism(4)
-        val outputBasePath = Path("./data/")
+                .setParallelism(1)
+//        val outputBasePath = Path("./data/")
+        val outputBasePath = Path("gs://moss-temp/tracing")
         val config = OutputFileConfig
             .builder()
             .withPartSuffix(".parquet")
