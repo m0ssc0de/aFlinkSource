@@ -21,10 +21,7 @@ object MyFlinkApp {
         val env = StreamExecutionEnvironment.getExecutionEnvironment()
         env.enableCheckpointing(1000)
         env.config.registerTypeWithKryoSerializer(BlockTraceOuterClass.BlockTrace::class.java, ProtobufSerializer::class.java)
-
-
-//        gs://<your-bucket>/<endpoint>
-
+        env.config.registerTypeWithKryoSerializer(SubquerySource::class.java, ProtobufSerializer::class.java)
 
         var sourceStream = env.fromSource(
                 SubquerySource(
@@ -49,10 +46,6 @@ object MyFlinkApp {
             .withOutputFileConfig(config)
             .build()
         sourceStream.sinkTo(sink)
-
-//        sourceStream.writeAsText(
-//            "gs://tmp4moss"
-//        );
 
         env.execute("My Flink App")
     }

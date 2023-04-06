@@ -1,0 +1,53 @@
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: basic-example
+spec:
+  image: flink:1.16
+  flinkVersion: v1_16
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "2"
+  serviceAccount: flink
+  podTemplate:
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: pod-template
+    spec:
+      initContainers:
+        - name: gs-fs-hadoop
+          image: flink:1.16
+          command: ["/bin/sh",  "-c"]
+          volumeMounts:
+            - mountPath: /opt/flink/plugins/gs-fs-hadoop
+              name: gs-fs-hadoop
+          args:
+            - |
+              cp /opt/flink/opt/flink-gs-fs-hadoop-1.16.1.jar /opt/flink/plugins/gs-fs-hadoop/
+              chown flink:flink -R /opt/flink/plugins/gs-fs-hadoop
+      containers:
+        # Do not change the main container name
+        - name: flink-main-container
+          env:
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              # kubectl create secret generic gskey --from-file=gskey
+              value: /etc/mysecret/gskey
+          volumeMounts:
+            - name: gskey
+              mountPath: /etc/mysecret
+            - mountPath: /opt/flink/plugins/gs-fs-hadoop
+              name: gs-fs-hadoop
+      volumes:
+        - name: gskey
+          secret:
+            secretName: gskey
+        - name: gs-fs-hadoop
+          emptyDir: { }
+  jobManager:
+    resource:
+      memory: "2048m"
+      cpu: 1
+  taskManager:
+    resource:
+      memory: "2048m"
+      cpu: 1
